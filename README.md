@@ -1,4 +1,4 @@
-# Nmixture Frogs CodeR meeting
+# N-mixture frogs abundance model - CodeR meeting
 
 Creator: Alejandro de la Fuente
 
