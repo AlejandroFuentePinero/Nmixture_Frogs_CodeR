@@ -6,8 +6,6 @@
 # Libraries ---------------------------------------------------------------
 
 library(jagsUI)
-library(tidyverse)
-
 
 # Simulate some data ------------------------------------------------------
 
@@ -24,29 +22,29 @@ Nsurveys <- 3
 
 C <- matrix(NA, nrow = Nsites, ncol = Nsurveys) # this is the matrix use for the observed counts
 
-(Rainfall <- sort(runif(Nsites, -1, 1))) # create a predictor
+(Chytrid <- sort(runif(Nsites, -1, 1))) # create a predictor
 
 a <- 2 # log-scale intercept
 
-chytrid_severity <- -3 # log-scale slope for "Rainfall"
+chytrid_severity <- -3 # log-scale slope for "Chytrid"
 
-lambda <- exp(a + chytrid_severity * Rainfall) # Expected abundance this is just a linear model (y ~ a + b*x)
+lambda <- exp(a + chytrid_severity * Chytrid) # Expected abundance this is just a linear model (y ~ a + b*x)
 
 # Lets do the first plot to see how things are looking
 
-plot(Rainfall, lambda, type = "l", lwd = 3)
+plot(Chytrid, lambda, type = "l", lwd = 3)
 
 # Local abundance simulation
 
 N <- rpois(Nsites, lambda) # rpois for count data
 
-points(Rainfall, N) # Lets add the points we just estimated to the plot. Those points represent the "realised" abundance
+points(Chytrid, N) # Lets add the points we just estimated to the plot. Those points represent the "realised" abundance
 
 table(N) # in 10 sites, this species is absent
 
 # Lets visualise the true system state
 
-plot(Rainfall, lambda, xlab = "Rainfall", ylab = "True abundance (N)", frame = F, cex = 1.5, xlim = c(-1,1))
+plot(Chytrid, lambda, xlab = "Chytrid severity", ylab = "True abundance (N)", frame = F, cex = 1.5, xlim = c(-1,1))
 lines(seq(-1,1,,100), exp(a + chytrid_severity * seq(-1,1,,100)), lwd = 3, col = "red")
 
 
@@ -54,15 +52,15 @@ lines(seq(-1,1,,100), exp(a + chytrid_severity * seq(-1,1,,100)), lwd = 3, col =
 # STEP 2 : SIMULATION OF THE OBSERVATION PROCESS
 ###
 
-Night_temp <- array(runif(Nsites * Nsurveys, -1, 1), dim= c(Nsites, Nsurveys)) # night temperature is expected to affect frog detection
+Env_wet <- array(runif(Nsites * Nsurveys, -1, 1), dim= c(Nsites, Nsurveys)) # night temperature is expected to affect frog detection
 
 a2 <- -2 #logit-scale intercept
 
-b_temp <- 3 # logit-scale slope for night temperature
+b_wet <- 3 # logit-scale slope for night temperature
 
-p <- plogis(a2 + b_temp * Night_temp) # detection probability
+p <- plogis(a2 + b_wet * Env_wet) # detection probability
 
-plot(p~Night_temp, ylim=c(0,1))
+plot(p~Env_wet, ylim=c(0,1))
 
 # Observation process simulation
 
@@ -72,8 +70,8 @@ for(survey in 1:Nsurveys){
   
 } # loop survey
 
-plot(Night_temp, C/max(C), xlab = "Night temperature (°C)", ylab = "Observed counts (scaled)", frame = F, cex = 1.5)
-lines(seq(-1,1,,100), plogis(a2 + b_temp * seq(-1,1,,100)), lwd = 3, col = "red")
+plot(Env_wet, C/max(C), xlab = "Wet", ylab = "Observed counts (scaled)", frame = F, cex = 1.5, xlim = c(-1,1))
+lines(seq(-1,1,,100), plogis(a2 + b_wet * seq(-1,1,,100)), lwd = 3, col = "red")
 
 
 # Data exploration --------------------------------------------------------
@@ -91,7 +89,7 @@ cat(file = "frog_model.txt", "
     a_abun ~ dunif(-10,10)
     a_det ~ dunif(-10,10)
     chytrid_severity ~ dunif(-10,10)
-    b_temp ~ dunif(-10,10)
+    b_wet ~ dunif(-10,10)
     
     # 2. Likelihood
     
@@ -101,7 +99,7 @@ cat(file = "frog_model.txt", "
       
         N[s] ~ dpois(lambda[s])
       
-        log(lambda[s]) <- a_abun + chytrid_severity * Rainfall[s]
+        log(lambda[s]) <- a_abun + chytrid_severity * Chytrid[s]
       
       # 2.2. Observation model for replicate counts
       
@@ -109,7 +107,7 @@ cat(file = "frog_model.txt", "
           
          C[s,j] ~ dbin(p[s,j], N[s])
          
-         logit(p[s,j]) <- a_det + b_temp * Night_temp[s,j]
+         logit(p[s,j]) <- a_det + b_wet * Env_wet[s,j]
       
        } # loop j
       } # loop s
@@ -124,8 +122,8 @@ cat(file = "frog_model.txt", "
 str(bdata <- list(C = C, 
                   Nsites = Nsites, 
                   Nsurveys = Nsurveys, 
-                  Rainfall = Rainfall, 
-                  Night_temp = Night_temp))
+                  Chytrid = Chytrid, 
+                  Env_wet = Env_wet))
 
 # Initial values
 
@@ -135,22 +133,22 @@ inits <- function() list(N = Nst,
                          a_abun = rnorm(1),
                          a_det = rnorm(1),
                          chytrid_severity = rnorm(1),
-                         b_temp = rnorm(1))
+                         b_wet = rnorm(1))
 
 # Parameters to monitor
 
-params <- c("chytrid_severity", "b_temp",
+params <- c("chytrid_severity", "b_wet",
             "N")
 
 # MCMC set up
 
 nc <- 3 # number of chains
 
-ni <- 22000 # lenght of the chains
+ni <- 22000 # length of the chains
 
-nb <- 2000 # burnin
+nb <- 2000 # burn-in
 
-nt <- 10 # thining
+nt <- 10 # thinning
 
 # Run model
 
@@ -166,16 +164,14 @@ out <- jags(data = bdata,
 
 print(out,2)
 
-comp <- tibble(true  = N,
-               estimated = out$mean$N,
-               lo = out$q2.5$N,
-               hi = out$q97.5$N)
 
-comp %>% ggplot(aes(x = (1:30), y = true), col = "black")+
-  geom_pointrange(aes(y = estimated, ymin = lo, ymax = hi), col = "red", size = 1)+
-  geom_point(size = 4)+
-  labs(x = "\nSite", y = "Abundance\n")+
-  theme_classic()+
-  theme(axis.title = element_text(size = 16),
-        axis.text = element_text(size = 12))
+# Let's compare the estimations to the true abundance
+
+
+plot(c(1:30), N, xlab = "Site", ylab = "Abundance", frame = F, cex = 1.5, pch=16, xlim = c(1,30), col = "black", ylim = c(0,230))
+points(c(1:30), out$mean$N, cex = 1.5, col = "red", pch=16)
+points(c(1:30),apply(C, 1, max), cex = 1.5, col = "blue", pch=16)
+arrows(x0=c(1:30), y0=out$q2.5$N, x1=c(1:30), y1=out$q97.5$N, code=3, col="red", length = 0.05, angle = 90)
+legend(15, 150, legend=c("True", "Estimated", "Observed"),
+       col=c("black", "red", "blue"), pch=16, cex=0.8)
 

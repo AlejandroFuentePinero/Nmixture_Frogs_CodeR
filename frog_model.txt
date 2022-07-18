@@ -1,0 +1,31 @@
+
+    model{
+    # 1. Priors
+    
+    a_abun ~ dunif(-10,10)
+    a_det ~ dunif(-10,10)
+    chytrid_severity ~ dunif(-10,10)
+    b_wet ~ dunif(-10,10)
+    
+    # 2. Likelihood
+    
+      # 2.1. Ecological model for true abundance
+      
+      for(s in 1:Nsites){
+      
+        N[s] ~ dpois(lambda[s])
+      
+        log(lambda[s]) <- a_abun + chytrid_severity * Chytrid[s]
+      
+      # 2.2. Observation model for replicate counts
+      
+        for(j in 1:Nsurveys){
+          
+         C[s,j] ~ dbin(p[s,j], N[s])
+         
+         logit(p[s,j]) <- a_det + b_wet * Env_wet[s,j]
+      
+       } # loop j
+      } # loop s
+     } # close model
+    
