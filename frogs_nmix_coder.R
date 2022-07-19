@@ -32,7 +32,7 @@ lambda <- exp(a + chytrid_severity * Chytrid) # Expected abundance this is just 
 
 # Lets do the first plot to see how things are looking
 
-plot(Chytrid, lambda, type = "l", lwd = 3)
+plot(Chytrid, lambda, type = "l", lwd = 3, xlab = "Chytrid severity", ylab = "Expected abundance", xlim = c(-1,1))
 
 # Local abundance simulation
 
@@ -52,7 +52,7 @@ lines(seq(-1,1,,100), exp(a + chytrid_severity * seq(-1,1,,100)), lwd = 3, col =
 # STEP 2 : SIMULATION OF THE OBSERVATION PROCESS
 ###
 
-Env_wet <- array(runif(Nsites * Nsurveys, -1, 1), dim= c(Nsites, Nsurveys)) # night temperature is expected to affect frog detection
+Env_wet <- array(runif(Nsites * Nsurveys, -1, 1), dim= c(Nsites, Nsurveys)) # environmental wetness is expected to affect frog detection
 
 a2 <- -2 #logit-scale intercept
 
@@ -60,7 +60,7 @@ b_wet <- 3 # logit-scale slope for night temperature
 
 p <- plogis(a2 + b_wet * Env_wet) # detection probability
 
-plot(p~Env_wet, ylim=c(0,1))
+plot(p~Env_wet, ylim=c(0,1), xlab = "Wet", ylab = "Detection probability", frame = F)
 
 # Observation process simulation
 
