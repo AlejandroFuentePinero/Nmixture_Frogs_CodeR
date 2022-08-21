@@ -1,6 +1,6 @@
 # CodaR talk on N-mixture model
 # Name: Alejandro de la Fuente
-# Date:
+# Date: 22/08/2022
 
 
 # Libraries ---------------------------------------------------------------
@@ -137,7 +137,10 @@ inits <- function() list(N = Nst,
 
 # Parameters to monitor
 
-params <- c("chytrid_severity", "b_wet",
+params <- c("a_abun",
+            "a_det",
+            "chytrid_severity", 
+            "b_wet",
             "N")
 
 # MCMC set up
@@ -164,6 +167,7 @@ out <- jags(data = bdata,
 
 print(out,2)
 
+traceplot(out)
 
 # Let's compare the estimations to the true abundance
 
@@ -172,6 +176,23 @@ plot(c(1:30), N, xlab = "Site", ylab = "Abundance", frame = F, cex = 1.5, pch=16
 points(c(1:30), out$mean$N, cex = 1.5, col = "red", pch=16)
 points(c(1:30),apply(C, 1, max), cex = 1.5, col = "blue", pch=16)
 arrows(x0=c(1:30), y0=out$q2.5$N, x1=c(1:30), y1=out$q97.5$N, code=3, col="red", length = 0.05, angle = 90)
-legend(15, 150, legend=c("True", "Estimated", "Observed"),
+legend(15, 150, legend=c("Truth", "Estimated", "Observed"),
        col=c("black", "red", "blue"), pch=16, cex=0.8)
+
+
+
+d <- tibble::tibble(term = c("Chytrid", "Wetness"),
+                    truth = c(-3,3),
+                    slope = c(out$mean$chytrid_severity, out$mean$b_wet),
+                    lo = c(out$q2.5$chytrid_severity, out$q2.5$b_wet),
+                    hi = c(out$q97.5$chytrid_severity, out$q97.5$b_wet))
+
+x <- 1:2
+
+plot(NULL, xlim=c(0, 3), ylim=c(-4, 4), xaxt='n', ylab='Slope', xlab='')
+points(x, d$truth, cex = 1.5, pch=16, xlim = c(1,30), col = "black")
+points(x, d$slope, cex = 1.5, col = "red", pch=16)
+arrows(x0=x, y0=d$lo, x1=x, y1=d$hi, code=3, col="red", length = 0.05, angle = 90)
+axis(1, at = x, labels = d$term, las=1)
+legend(2.5,0, legend=c("Truth", "Estimated"), col=c("black", "red"), pch=16, cex=0.8)
 
